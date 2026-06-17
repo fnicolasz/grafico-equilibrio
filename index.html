@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador EA3 — Fundamentos de Economía · DuocUC</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0F1B2D;
+    --navy-light: #172436;
+    --navy-mid: #1E3050;
+    --gold: #F5C842;
+    --gold-dim: #c9a22e;
+    --white: #F0EDE6;
+    --white-dim: #a8a49c;
+    --green: #2ECC71;
+    --green-dim: rgba(46,204,113,0.18);
+    --red: #E74C3C;
+    --red-dim: rgba(231,76,60,0.18);
+    --blue-accent: #4A9EFF;
+    --panel: #162032;
+    --border: rgba(245,200,66,0.18);
+    --radius: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--navy); color:var(--white); font-family:'Inter',sans-serif; min-height:100vh; overflow-x:hidden; }
+
+  header { background:var(--navy-light); border-bottom:1px solid var(--border); padding:14px 28px; display:flex; align-items:center; justify-content:space-between; }
+  .header-left { display:flex; align-items:center; gap:14px; }
+  .logo-badge { background:var(--gold); color:var(--navy); font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:11px; letter-spacing:1.5px; padding:5px 10px; border-radius:6px; }
+  .header-title { font-family:'Space Grotesk',sans-serif; font-size:16px; font-weight:600; color:var(--white); }
+  .header-subtitle { font-size:12px; color:var(--white-dim); margin-top:1px; }
+  .header-tag { font-size:11px; color:var(--gold); border:1px solid var(--border); padding:4px 10px; border-radius:20px; letter-spacing:0.5px; }
+
+  .tab-bar { display:flex; padding:18px 28px 0; gap:6px; border-bottom:1px solid var(--border); background:var(--navy-light); }
+  .tab-btn { background:transparent; border:none; color:var(--white-dim); font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:500; padding:10px 22px; border-radius:8px 8px 0 0; cursor:pointer; transition:all 0.2s; border-bottom:2px solid transparent; letter-spacing:0.3px; }
+  .tab-btn:hover { color:var(--white); background:rgba(255,255,255,0.04); }
+  .tab-btn.active { color:var(--gold); border-bottom:2px solid var(--gold); background:rgba(245,200,66,0.06); }
+
+  .tab-content { display:none; }
+  .tab-content.active { display:flex; flex-direction:column; }
+
+  .workspace { display:grid; grid-template-columns:1fr 320px; gap:0; min-height:calc(100vh - 112px); }
+
+  .chart-area { padding:24px; display:flex; flex-direction:column; gap:16px; border-right:1px solid var(--border); }
+  .chart-label { font-family:'Space Grotesk',sans-serif; font-size:20px; font-weight:700; color:var(--white); }
+  .chart-desc { font-size:12px; color:var(--white-dim); margin-top:3px; max-width:500px; line-height:1.5; }
+  .canvas-wrap { position:relative; background:var(--navy-light); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; flex:1; }
+  canvas { display:block; width:100%; cursor:crosshair; }
+  .chart-legend { display:flex; gap:18px; flex-wrap:wrap; }
+  .legend-item { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--white-dim); }
+  .legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+  .control-panel { padding:24px 20px; display:flex; flex-direction:column; gap:20px; overflow-y:auto; max-height:calc(100vh - 112px); }
+  .panel-section { background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:16px; }
+  .panel-section-title { font-family:'Space Grotesk',sans-serif; font-size:11px; font-weight:600; letter-spacing:1.2px; color:var(--gold); text-transform:uppercase; margin-bottom:14px; }
+
+  .slider-group { margin-bottom:14px; }
+  .slider-group:last-child { margin-bottom:0; }
+  .slider-label { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .slider-name { font-size:13px; color:var(--white); font-weight:500; }
+  .slider-val { font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:700; color:var(--gold); min-width:60px; text-align:right; }
+  input[type=range] { width:100%; -webkit-appearance:none; height:4px; border-radius:2px; background:var(--navy-mid); outline:none; cursor:pointer; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:var(--gold); cursor:pointer; box-shadow:0 0 0 3px rgba(245,200,66,0.2); transition:box-shadow 0.2s; }
+  input[type=range]::-webkit-slider-thumb:hover { box-shadow:0 0 0 6px rgba(245,200,66,0.25); }
+
+  .kpi-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .kpi-card { background:var(--navy-mid); border-radius:8px; padding:12px; border:1px solid rgba(255,255,255,0.05); }
+  .kpi-label { font-size:10px; color:var(--white-dim); letter-spacing:0.8px; text-transform:uppercase; margin-bottom:4px; }
+  .kpi-value { font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:700; color:var(--white); }
+  .kpi-value.positive { color:var(--green); }
+  .kpi-value.negative { color:var(--red); }
+  .kpi-value.gold { color:var(--gold); }
+  .kpi-sub { font-size:10px; color:var(--white-dim); margin-top:2px; }
+
+  .formula-box { background:rgba(245,200,66,0.07); border:1px solid rgba(245,200,66,0.25); border-radius:8px; padding:12px; font-size:12px; color:var(--white-dim); line-height:1.7; }
+  .formula-box strong { color:var(--gold); }
+  .formula-box .formula { font-family:'Space Grotesk',sans-serif; font-size:13px; color:var(--white); background:rgba(0,0,0,0.2); padding:8px; border-radius:6px; margin:6px 0; text-align:center; letter-spacing:0.5px; }
+
+  .verdict-box { border-radius:8px; padding:12px 14px; font-size:13px; font-weight:500; line-height:1.5; display:flex; align-items:flex-start; gap:10px; transition:all 0.3s; }
+  .verdict-box.ganancia { background:var(--green-dim); border:1px solid rgba(46,204,113,0.4); color:#7fffc4; }
+  .verdict-box.perdida { background:var(--red-dim); border:1px solid rgba(231,76,60,0.4); color:#ffaaaa; }
+  .verdict-box.equilibrio { background:rgba(74,158,255,0.12); border:1px solid rgba(74,158,255,0.35); color:#a0cfff; }
+  .verdict-icon { font-size:20px; flex-shrink:0; }
+
+  .ejercicios-bar { background:var(--navy-light); border-top:1px solid var(--border); padding:14px 24px; }
+  .ej-title-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .ej-title { font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:600; color:var(--white); }
+  .ej-scroll { display:flex; gap:12px; overflow-x:auto; padding-bottom:4px; }
+  .ej-scroll::-webkit-scrollbar { height:4px; }
+  .ej-scroll::-webkit-scrollbar-track { background:var(--navy); }
+  .ej-scroll::-webkit-scrollbar-thumb { background:var(--gold-dim); border-radius:2px; }
+
+  .ej-card { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px 16px; min-width:240px; max-width:260px; cursor:pointer; transition:all 0.2s; flex-shrink:0; }
+  .ej-card:hover { border-color:var(--gold); background:rgba(245,200,66,0.05); }
+  .ej-card.loaded { border-color:var(--gold); background:rgba(245,200,66,0.07); }
+  .ej-num { font-size:10px; color:var(--gold); font-weight:600; letter-spacing:1px; text-transform:uppercase; margin-bottom:4px; }
+  .ej-name { font-size:13px; font-weight:600; color:var(--white); margin-bottom:4px; }
+  .ej-desc { font-size:11px; color:var(--white-dim); line-height:1.4; }
+  .ej-load-btn { margin-top:8px; background:transparent; border:1px solid var(--border); color:var(--gold); font-size:11px; font-weight:600; padding:5px 12px; border-radius:5px; cursor:pointer; letter-spacing:0.5px; transition:all 0.2s; font-family:'Space Grotesk',sans-serif; }
+  .ej-load-btn:hover { background:var(--gold); color:var(--navy); }
+
+  .answer-block { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px 14px; font-size:12px; color:var(--white-dim); line-height:1.6; display:none; margin-top:8px; }
+  .answer-block.visible { display:block; }
+  .answer-block strong { color:var(--green); }
+  .reveal-btn { background:transparent; border:1px solid var(--green); color:var(--green); font-size:11px; font-weight:600; padding:5px 12px; border-radius:5px; cursor:pointer; letter-spacing:0.5px; transition:all 0.2s; font-family:'Space Grotesk',sans-serif; margin-top:8px; display:block; }
+  .reveal-btn:hover { background:var(--green); color:var(--navy); }
+
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:var(--navy); }
+  ::-webkit-scrollbar-thumb { background:var(--navy-mid); border-radius:3px; }
+
+  /* range hint */
+  .range-hint { font-size:10px; color:rgba(160,160,140,0.5); display:flex; justify-content:space-between; margin-top:2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="logo-badge">DuocUC</div>
+    <div>
+      <div class="header-title">Simulador Interactivo · EA3</div>
+      <div class="header-subtitle">Fundamentos de Economía — Escuela de Administración y Negocios</div>
+    </div>
+  </div>
+  <div class="header-tag">📐 Preparación Prueba</div>
+</header>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('pe',event)">📊 Punto de Equilibrio</button>
+  <button class="tab-btn" onclick="switchTab('ela',event)">📈 Elasticidad Precio</button>
+</div>
+
+<!-- ══════════════════════════════════════ TAB 1: PE ══ -->
+<div id="tab-pe" class="tab-content active">
+  <div class="workspace">
+    <div class="chart-area">
+      <div>
+        <div class="chart-label">Punto de Equilibrio Empresarial</div>
+        <div class="chart-desc">Mueve los sliders para modificar costos y precio. Las curvas se recalculan en tiempo real — el punto dorado es el PE exacto.</div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="canvaPE" height="420"></canvas>
+      </div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#F5C842"></div>Ingresos Totales (IT)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4A9EFF"></div>Costo Total (CT)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(255,255,255,0.3)"></div>Costos Fijos (CF)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(46,204,113,0.7)"></div>Zona Ganancia</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(231,76,60,0.7)"></div>Zona Pérdida</div>
+      </div>
+    </div>
+
+    <div class="control-panel">
+      <div class="panel-section">
+        <div class="panel-section-title">Variables del Modelo</div>
+
+        <div class="slider-group">
+          <div class="slider-label">
+            <span class="slider-name">Costos Fijos (CF)</span>
+            <span class="slider-val" id="vCF">$1,200</span>
+          </div>
+          <input type="range" id="sCF" min="500" max="8000" step="100" value="1200" oninput="updatePE()">
+          <div class="range-hint"><span>$500</span><span>$8,000</span></div>
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-label">
+            <span class="slider-name">Precio de Venta Unitario (PVU)</span>
+            <span class="slider-val" id="vPVU">$5.00</span>
+          </div>
+          <input type="range" id="sPVU" min="1" max="20" step="0.5" value="5.0" oninput="updatePE()">
+          <div class="range-hint"><span>$1</span><span>$20</span></div>
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-label">
+            <span class="slider-name">Costo Variable Unitario (CVU)</span>
+            <span class="slider-val" id="vCVU">$2.00</span>
+          </div>
+          <input type="range" id="sCVU" min="0.5" max="15" step="0.5" value="2.0" oninput="updatePE()">
+          <div class="range-hint"><span>$0.50</span><span>$15</span></div>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-section-title">Resultados</div>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">PE en Unidades</div>
+            <div class="kpi-value gold" id="kpiPE_u">400</div>
+            <div class="kpi-sub">unidades/período</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">PE en Ingresos</div>
+            <div class="kpi-value gold" id="kpiPE_i">$2,000</div>
+            <div class="kpi-sub">ingresos mínimos</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Margen Contribución</div>
+            <div class="kpi-value" id="kpiMCU">$3.00</div>
+            <div class="kpi-sub">MCU = PVU − CVU</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">% Margen / Precio</div>
+            <div class="kpi-value" id="kpiPct">60.0%</div>
+            <div class="kpi-sub">contribución relativa</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="formula-box">
+        <strong>Fórmula:</strong>
+        <div class="formula">PE = CF ÷ (PVU − CVU)</div>
+        <span style="font-size:11px">Cada unidad vendida por encima del PE genera utilidad igual al MCU. Por debajo, la empresa opera con pérdida.</span>
+      </div>
+
+      <div id="verdictPE" class="verdict-box equilibrio">
+        <span class="verdict-icon">⚖️</span>
+        <span id="verdictPEtxt">Carga un ejercicio o mueve los sliders.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="ejercicios-bar">
+    <div class="ej-title-row">
+      <div class="ej-title">🎯 Ejercicios — carga los valores, mueve los sliders hasta encontrar el PE y luego verifica</div>
+    </div>
+    <div class="ej-scroll">
+
+      <div class="ej-card" id="ej-pe-1">
+        <div class="ej-num">Ejercicio 1</div>
+        <div class="ej-name">Café de Barrio</div>
+        <div class="ej-desc">CF=$1.200 · PVU=$5 · CVU=$2<br>¿Cuántos cafés para cubrir costos?</div>
+        <button class="ej-load-btn" onclick="loadEjPE(1200,5.0,2.0,'ej-pe-1')">Cargar en gráfico</button>
+        <button class="reveal-btn" onclick="toggleAnswer('ans-pe-1')">Ver respuesta</button>
+        <div class="answer-block" id="ans-pe-1">
+          <strong>PE = 400 unidades</strong><br>
+          MCU = $5.00 − $2.00 = $3.00<br>
+          PE = $1.200 ÷ $3.00 = <strong>400 cafés</strong><br>
+          Ingresos PE = 400 × $5 = $2.000
+        </div>
+      </div>
+
+      <div class="ej-card" id="ej-pe-2">
+        <div class="ej-num">Ejercicio 2</div>
+        <div class="ej-name">Taller de Bicicletas</div>
+        <div class="ej-desc">CF=$1.800 · PVU=$8 · CVU=$3,50<br>¿Cuántas reparaciones al mes?</div>
+        <button class="ej-load-btn" onclick="loadEjPE(1800,8.0,3.5,'ej-pe-2')">Cargar en gráfico</button>
+        <button class="reveal-btn" onclick="toggleAnswer('ans-pe-2')">Ver respuesta</button>
+        <div class="answer-block" id="ans-pe-2">
+          <strong>PE = 400 reparaciones</strong><br>
+          MCU = $8.00 − $3.50 = $4.50<br>
+          PE = $1.800 ÷ $4.50 = <strong>400 unidades</strong><br>
+          Ingresos PE = 400 × $8 = $3.200
+        </div>
+      </div>
+
+      <div class="ej-card" id="ej-pe-3">
+        <div class="ej-num">Ejercicio 3</div>
+        <div class="ej-name">CF Sube — Taller</div>
+        <div class="ej-desc">CF=$2.400 · PVU=$8 · CVU=$3,50<br>¿Cómo cambia el PE al subir el arriendo?</div>
+        <button class="ej-load-btn" onclick="loadEjPE(2400,8.0,3.5,'ej-pe-3')">Cargar en gráfico</button>
+        <button class="reveal-btn" onclick="toggleAnswer('ans-pe-3')">Ver respuesta</button>
+        <div class="answer-block" id="ans-pe-3">
+          <strong>PE sube a 534 unidades (+134)</strong><br>
+          MCU = $8.00 − $3.50 = $4.50 (igual)<br>
+          PE = $2.400 ÷ $4.50 = <strong>534 unidades</strong><br>
+          Conclusión: más CF → necesitas vender más para equilibrar.
+        </div>
+      </div>
+
+      <div class="ej-card" id="ej-pe-4">
+        <div class="ej-num">Ejercicio 4</div>
+        <div class="ej-name">Opción A: Bajar Precio</div>
+        <div class="ej-desc">CF=$1.800 · PVU=$7 · CVU=$3,50<br>¿Conviene reducir el precio de $8 a $7?</div>
+        <button class="ej-load-btn" onclick="loadEjPE(1800,7.0,3.5,'ej-pe-4')">Cargar en gráfico</button>
+        <button class="reveal-btn" onclick="toggleAnswer('ans-pe-4')">Ver respuesta</button>
+        <div class="answer-block" id="ans-pe-4">
+          <strong>PE sube a 514 unidades ❌ Peor</strong><br>
+          MCU = $7.00 − $3.50 = $3.50 (bajó de $4.50)<br>
+          PE = $1.800 ÷ $3.50 = <strong>514 unidades</strong><br>
+          Bajar PVU reduce el MCU → necesitas vender MÁS.
+        </div>
+      </div>
+
+      <div class="ej-card" id="ej-pe-5">
+        <div class="ej-num">Ejercicio 5</div>
+        <div class="ej-name">Opción B: Bajar CVU</div>
+        <div class="ej-desc">CF=$1.800 · PVU=$8 · CVU=$3,00<br>¿Conviene negociar insumos más baratos?</div>
+        <button class="ej-load-btn" onclick="loadEjPE(1800,8.0,3.0,'ej-pe-5')">Cargar en gráfico</button>
+        <button class="reveal-btn" onclick="toggleAnswer('ans-pe-5')">Ver respuesta</button>
+        <div class="answer-block" id="ans-pe-5">
+          <strong>PE baja a 360 unidades ✅ Mejor</strong><br>
+          MCU = $8.00 − $3.00 = $5.00 (subió de $4.50)<br>
+          PE = $1.800 ÷ $5.00 = <strong>360 unidades</strong><br>
+          Bajar CVU aumenta MCU → necesitas vender MENOS para cubrir costos.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div><!-- end tab-pe -->
+
+
+<!-- ══════════════════════════════════════ TAB 2: ELASTICIDAD ══ -->
+<div id="tab-ela" class="tab-content">
+  <div class="workspace">
+    <div class="chart-area">
+      <div>
+        <div class="chart-label">Elasticidad Precio de la Demanda</div>
+        <div class="chart-desc">Ajusta los parámetros. El punto rojo es P1/Q1 (situación inicial), el verde es P2/Q2 (nueva situación). Ambos deben estar sobre la curva.</div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="canvaEla" height="420"></canvas>
+      </div>
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#F5C842"></div>Curva de Demanda</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#E74C3C"></div>Punto inicial (P1, Q1)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#2ECC71"></div>Punto nuevo (P2, Q2)</div>
+      </div>
+    </div>
+
+    <div class="control-panel">
+      <div class="panel-section">
+        <div class="panel-section-title">Parámetros</div>
+
+        <div class="slider-group">
+          <div class="slider-label">
+            <span class="slider-name">Precio Inicial (P1)</span>
+            <span class="slider-val" id="vP1">$50</span>
+          </div>
+          <input type="range" id="sP1" min="5" max="100" step="1" value="50" oninput="updateEla()">
+          <div class="range-hint"><span>$5</span><span>$100</span></div>
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-label">
+            <span class="slider-name">Cantidad Inicial (Q1)</span>
+            <span class="slider-val" id="vQ1">500</span>
+          </div>
+          <input type="range" id="sQ1" min="50" max="800" step="10" value="500" oninput="updateEla()">
+          <div class="range-hint"><span>50</span><span>800</span></div>
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-label">
+            <span class="slider-name">Elasticidad |ε|</span>
+            <span class="slider-val" id="vEPS">0.8</span>
+          </div>
+          <input type="range" id="sEPS" min="0.1" max="3.5" step="0.1" value="0.8" oninput="updateEla()">
+          <div class="range-hint"><span>0.1 (inelástica)</span><span>3.5 (muy elástica)</span></div>
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-label">
+            <span class="slider-name">Precio Nuevo (P2)</span>
+            <span class="slider-val" id="vP2">$55</span>
+          </div>
+          <input type="range" id="sP2" min="5" max="100" step="1" value="55" oninput="updateEla()">
+          <div class="range-hint"><span>$5</span><span>$100</span></div>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-section-title">Resultados</div>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">Cantidad Nueva Q2</div>
+            <div class="kpi-value gold" id="kpiQ2">460</div>
+            <div class="kpi-sub">unidades</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Variación Q</div>
+            <div class="kpi-value" id="kpiDQ">−8.0%</div>
+            <div class="kpi-sub">cambio porcentual</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Ingreso Inicial IT1</div>
+            <div class="kpi-value" id="kpiIT1">$25.000</div>
+            <div class="kpi-sub">P1 × Q1</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Ingreso Nuevo IT2</div>
+            <div class="kpi-value" id="kpiIT2">$25.300</div>
+            <div class="kpi-sub">P2 × Q2</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="elaBadge" class="verdict-box equilibrio">
+        <span class="verdict-icon" id="elaIcon">📊</span>
+        <div>
+          <strong id="elaTipo" style="display:block;font-size:14px">Inelástica</strong>
+          <span id="elaExplica" style="font-size:11px">|ε| &lt; 1 → Al subir precio, IT aumenta</span>
+        </div>
+      </div>
+
+      <div class="formula-box">
+        <strong>Fórmula:</strong>
+        <div class="formula">ε = ΔQ% ÷ ΔP%</div>
+        <span style="font-size:11px">
+          <strong style="color:#2ECC71">Elástica |ε|&gt;1:</strong> bajar P → sube IT<br>
+          <strong style="color:#ffaaaa">Inelástica |ε|&lt;1:</strong> subir P → sube IT<br>
+          <strong style="color:#a0cfff">Unitaria |ε|=1:</strong> IT no cambia
+        </span>
+      </div>
+
+      <div class="panel-section" style="padding:12px">
+        <div class="panel-section-title">Clasificación</div>
+        <table style="width:100%;font-size:11px;border-collapse:collapse;">
+          <tr style="border-bottom:1px solid var(--border)">
+            <th style="text-align:left;padding:5px 4px;color:var(--white-dim)">Tipo</th>
+            <th style="text-align:center;padding:5px 4px;color:var(--gold)">|ε|</th>
+            <th style="text-align:left;padding:5px 4px;color:var(--white-dim)">Ejemplo</th>
+          </tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+            <td style="padding:5px 4px;color:#7fffc4">Inelástica</td>
+            <td style="text-align:center;padding:5px 4px;color:var(--white)">&lt; 1</td>
+            <td style="padding:5px 4px;color:var(--white-dim)">Leche, med.</td>
+          </tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+            <td style="padding:5px 4px;color:#a0cfff">Unitaria</td>
+            <td style="text-align:center;padding:5px 4px;color:var(--white)">= 1</td>
+            <td style="padding:5px 4px;color:var(--white-dim)">Transporte</td>
+          </tr>
+          <tr>
+            <td style="padding:5px 4px;color:#ffaaaa">Elástica</td>
+            <td style="text-align:center;padding:5px 4px;color:var(--white)">&gt; 1</td>
+            <td style="padding:5px 4px;color:var(--white-dim)">Smartphones</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="ejercicios-bar">
+    <div class="ej-title-row">
+      <div class="ej-title">🎯 Ejercicios — carga el ejercicio, observa ambos puntos en el gráfico, luego verifica</div>
+    </div>
+    <div class="ej-scroll">
+
+      <div class="ej-card" id="ej-ela-1">
+        <div class="ej-num">Ejercicio 6</div>
+        <div class="ej-name">Zapatillas Deportivas</div>
+        <div class="ej-desc">P1=$50 · Q1=500 · ε=0.8 · P2=$55<br>¿Subir el precio sube los ingresos?</div>
+        <button class="ej-load-btn" onclick="loadEjEla(50,500,0.8,55,'ej-ela-1')">Cargar en gráfico</button>
+        <button class="reveal-btn" onclick="toggleAnswer('ans-ela-1')">Ver respuesta</button>
+        <div class="answer-block" id="ans-ela-1">
+          <strong>SÍ — Inelástica ✅</strong><br>
+          ΔP% = +10% → ΔQ% = −0.8×10% = −8%<br>
+          Q2 = 500×0.92 = <strong>460 unidades</strong><br>
+          IT1 = $50×500 = $25.000<br>
+          IT2 = $55×460 = $25.300 (+$300)<br>
+          |ε|=0.8 &lt; 1 → subir P sube IT ✓
+        </div>
+      </div>
+
+      <div class="ej-card" id="ej-ela-2">
+        <div class="ej-num">Ejercicio 7</div>
+        <div class="ej-name">Restaurante Comida Rápida</div>
+        <div class="ej-desc">P1=$10 · Q1=400 · ε=1.5 · P2=$9<br>¿Bajar el precio sube los ingresos?</div>
+        <button class="ej-load-btn" onclick="loadEjEla(10,400,1.5,9,'ej-ela-2')">Cargar en gráfico</button>
+        <button class="reveal-btn" onclick="toggleAnswer('ans-ela-2')">Ver respuesta</button>
+        <div class="answer-block" id="ans-ela-2">
+          <strong>SÍ — Elástica ✅</strong><br>
+          ΔP% = −10% → ΔQ% = −1.5×(−10%) = +15%<br>
+          Q2 = 400×1.15 = <strong>460 unidades</strong><br>
+          IT1 = $10×400 = $4.000<br>
+          IT2 = $9×460 = $4.140 (+$140)<br>
+          |ε|=1.5 &gt; 1 → bajar P sube IT ✓
+        </div>
+      </div>
+
+      <div class="ej-card" id="ej-ela-3">
+        <div class="ej-num">Ejercicio 8</div>
+        <div class="ej-name">Notebook / Laptop</div>
+        <div class="ej-desc">P1=$80 · Q1=200 · ε=2.1 · P2=$72<br>Demanda muy elástica — ¿bajar precio?</div>
+        <button class="ej-load-btn" onclick="loadEjEla(80,200,2.1,72,'ej-ela-3')">Cargar en gráfico</button>
+        <button class="reveal-btn" onclick="toggleAnswer('ans-ela-3')">Ver respuesta</button>
+        <div class="answer-block" id="ans-ela-3">
+          <strong>SÍ — Muy Elástica ✅</strong><br>
+          ΔP% = −10% → ΔQ% = −2.1×(−10%) = +21%<br>
+          Q2 = 200×1.21 = <strong>242 unidades</strong><br>
+          IT1 = $80×200 = $16.000<br>
+          IT2 = $72×242 = $17.424 (+$1.424)<br>
+          |ε|=2.1 &gt; 1 → demanda responde con fuerza ✓
+        </div>
+      </div>
+
+      <div class="ej-card" id="ej-ela-4">
+        <div class="ej-num">Ejercicio 9</div>
+        <div class="ej-name">Medicamento Básico</div>
+        <div class="ej-desc">P1=$30 · Q1=600 · ε=0.2 · P2=$33<br>Casi inelástico — ¿qué pasa con Q?</div>
+        <button class="ej-load-btn" onclick="loadEjEla(30,600,0.2,33,'ej-ela-4')">Cargar en gráfico</button>
+        <button class="reveal-btn" onclick="toggleAnswer('ans-ela-4')">Ver respuesta</button>
+        <div class="answer-block" id="ans-ela-4">
+          <strong>Q baja muy poco — Muy Inelástica</strong><br>
+          ΔP% = +10% → ΔQ% = −0.2×10% = −2%<br>
+          Q2 = 600×0.98 = <strong>588 unidades</strong><br>
+          IT1 = $30×600 = $18.000<br>
+          IT2 = $33×588 = $19.404 (+$1.404)<br>
+          |ε|=0.2 → la gente compra igual aunque suba el precio ✓
+        </div>
+      </div>
+
+      <div class="ej-card" id="ej-ela-5">
+        <div class="ej-num">Ejercicio 10</div>
+        <div class="ej-name">Elasticidad Unitaria</div>
+        <div class="ej-desc">P1=$40 · Q1=300 · ε=1.0 · P2=$44<br>¿Cambian los ingresos totales?</div>
+        <button class="ej-load-btn" onclick="loadEjEla(40,300,1.0,44,'ej-ela-5')">Cargar en gráfico</button>
+        <button class="reveal-btn" onclick="toggleAnswer('ans-ela-5')">Ver respuesta</button>
+        <div class="answer-block" id="ans-ela-5">
+          <strong>Ingresos casi iguales — Unitaria</strong><br>
+          ΔP% = +10% → ΔQ% = −1.0×10% = −10%<br>
+          Q2 = 300×0.90 = <strong>270 unidades</strong><br>
+          IT1 = $40×300 = $12.000<br>
+          IT2 = $44×270 = $11.880 (≈ igual)<br>
+          |ε|=1.0 → el alza de P se cancela con la caída de Q ✓
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div><!-- end tab-ela -->
+
+
+<script>
+// ═══════════════════ UTILS ═══════════════════
+function switchTab(id, ev) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  if(ev && ev.target) ev.target.classList.add('active');
+  if (id === 'pe')  setTimeout(updatePE,  50);
+  if (id === 'ela') setTimeout(updateEla, 50);
+}
+
+function toggleAnswer(id) {
+  document.getElementById(id).classList.toggle('visible');
+}
+
+// ═══════════════════ PUNTO DE EQUILIBRIO ═══════════════════
+function loadEjPE(cf, pvu, cvu, cardId) {
+  document.querySelectorAll('#tab-pe .ej-card').forEach(c => c.classList.remove('loaded'));
+  document.getElementById(cardId).classList.add('loaded');
+  document.getElementById('sCF').value  = cf;
+  document.getElementById('sPVU').value = pvu;
+  document.getElementById('sCVU').value = cvu;
+  updatePE();
+}
+
+function updatePE() {
+  const CF  = parseFloat(document.getElementById('sCF').value);
+  const PVU = parseFloat(document.getElementById('sPVU').value);
+  let   CVU = parseFloat(document.getElementById('sCVU').value);
+  if (CVU >= PVU) { CVU = PVU - 0.5; document.getElementById('sCVU').value = CVU.toFixed(1); }
+
+  const MCU  = PVU - CVU;
+  const PE_u = CF / MCU;
+  const PE_i = PE_u * PVU;
+  const pct  = (MCU / PVU) * 100;
+
+  document.getElementById('vCF').textContent  = '$' + CF.toLocaleString('es-CL');
+  document.getElementById('vPVU').textContent = '$' + PVU.toFixed(2);
+  document.getElementById('vCVU').textContent = '$' + CVU.toFixed(2);
+  document.getElementById('kpiPE_u').textContent = Math.ceil(PE_u).toLocaleString('es-CL');
+  document.getElementById('kpiPE_i').textContent = '$' + Math.round(PE_i).toLocaleString('es-CL');
+  document.getElementById('kpiMCU').textContent  = '$' + MCU.toFixed(2);
+  document.getElementById('kpiPct').textContent  = pct.toFixed(1) + '%';
+
+  const v  = document.getElementById('verdictPE');
+  const vt = document.getElementById('verdictPEtxt');
+  if (MCU < 1.0) {
+    v.className = 'verdict-box perdida';
+    v.querySelector('.verdict-icon').textContent = '⚠️';
+    vt.textContent = `Margen muy bajo ($${MCU.toFixed(2)} por unidad). Necesitarías ${Math.ceil(PE_u).toLocaleString()} unidades. Considera subir PVU o bajar CVU.`;
+  } else if (PE_u <= 500) {
+    v.className = 'verdict-box ganancia';
+    v.querySelector('.verdict-icon').textContent = '✅';
+    vt.textContent = `PE alcanzable en ${Math.ceil(PE_u).toLocaleString()} unidades. Margen de contribución del ${pct.toFixed(1)}% sobre el precio.`;
+  } else {
+    v.className = 'verdict-box equilibrio';
+    v.querySelector('.verdict-icon').textContent = '📌';
+    vt.textContent = `PE en ${Math.ceil(PE_u).toLocaleString()} unidades. Ingresos mínimos: $${Math.round(PE_i).toLocaleString('es-CL')}.`;
+  }
+
+  drawPE(CF, PVU, CVU, PE_u);
+}
+
+function drawPE(CF, PVU, CVU, PE_u) {
+  const canvas = document.getElementById('canvaPE');
+  const W = canvas.offsetWidth; const H = canvas.offsetHeight || 420;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+
+  const pad = {top:30, right:30, bottom:50, left:72};
+  const cW = W - pad.left - pad.right;
+  const cH = H - pad.top  - pad.bottom;
+
+  // Scale: show PE centered with ~40% of chart to left and ~60% to right
+  // X: 0 to maxUnits. We want PE_u at about 38% of x-axis
+  const maxUnits = PE_u / 0.38;
+  const maxMoney = PVU * maxUnits * 1.05;
+
+  function xp(u) { return pad.left + (u / maxUnits) * cW; }
+  function yp(m) { return pad.top + cH - (m / maxMoney) * cH; }
+
+  // Grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 1;
+  for (let i=0; i<=5; i++) {
+    const y = pad.top + (i/5)*cH;
+    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(pad.left+cW,y); ctx.stroke();
+    const x = pad.left + (i/5)*cW;
+    ctx.beginPath(); ctx.moveTo(x,pad.top); ctx.lineTo(x,pad.top+cH); ctx.stroke();
+  }
+
+  // Zones
+  const xPE = xp(PE_u);
+  const lossGrad = ctx.createLinearGradient(pad.left,0,xPE,0);
+  lossGrad.addColorStop(0,'rgba(231,76,60,0.22)'); lossGrad.addColorStop(1,'rgba(231,76,60,0.04)');
+  ctx.fillStyle = lossGrad;
+  ctx.fillRect(pad.left, pad.top, Math.max(0, Math.min(xPE,pad.left+cW)-pad.left), cH);
+
+  if (xPE < pad.left+cW) {
+    const gainGrad = ctx.createLinearGradient(xPE,0,pad.left+cW,0);
+    gainGrad.addColorStop(0,'rgba(46,204,113,0.04)'); gainGrad.addColorStop(1,'rgba(46,204,113,0.2)');
+    ctx.fillStyle = gainGrad;
+    ctx.fillRect(xPE, pad.top, pad.left+cW-xPE, cH);
+  }
+
+  // Axes
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.moveTo(pad.left,pad.top); ctx.lineTo(pad.left,pad.top+cH);
+  ctx.moveTo(pad.left,pad.top+cH); ctx.lineTo(pad.left+cW,pad.top+cH);
+  ctx.stroke();
+
+  // Y labels
+  ctx.fillStyle='rgba(160,160,160,0.6)'; ctx.font='10px Inter'; ctx.textAlign='right';
+  const ySteps = 5;
+  for (let i=0; i<=ySteps; i++) {
+    const m = (maxMoney/ySteps)*i;
+    const y = yp(m);
+    const label = m >= 1000 ? '$'+(m/1000).toFixed(1)+'k' : '$'+m.toFixed(0);
+    ctx.fillText(label, pad.left-5, y+3);
+  }
+  // X labels
+  ctx.textAlign='center';
+  const xSteps = 5;
+  for (let i=0; i<=xSteps; i++) {
+    const u = (maxUnits/xSteps)*i;
+    const x = xp(u);
+    const label = u >= 1000 ? (u/1000).toFixed(1)+'k' : u.toFixed(0);
+    ctx.fillText(label, x, pad.top+cH+16);
+  }
+
+  // Axis titles
+  ctx.fillStyle='rgba(160,160,160,0.45)'; ctx.font='11px Inter'; ctx.textAlign='center';
+  ctx.fillText('Unidades producidas / vendidas', pad.left+cW/2, H-6);
+  ctx.save(); ctx.translate(12, pad.top+cH/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText('Ingresos / Costos ($)', 0, 0); ctx.restore();
+
+  // CF line
+  ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=1.5; ctx.setLineDash([5,5]);
+  ctx.beginPath(); ctx.moveTo(pad.left,yp(CF)); ctx.lineTo(pad.left+cW,yp(CF)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(220,220,200,0.5)'; ctx.font='10px Space Grotesk'; ctx.textAlign='left';
+  ctx.fillText('CF = $'+CF.toLocaleString('es-CL'), pad.left+4, yp(CF)-4);
+
+  // Costo Total line
+  ctx.strokeStyle='#4A9EFF'; ctx.lineWidth=2.5;
+  ctx.beginPath();
+  let started=false;
+  for (let i=0; i<=200; i++) {
+    const u=(maxUnits/200)*i; const ct=CF+CVU*u;
+    if(yp(ct)<pad.top) break;
+    i===0 ? ctx.moveTo(xp(u),yp(ct)) : ctx.lineTo(xp(u),yp(ct));
+    started=true;
+  }
+  ctx.stroke();
+
+  // Ingresos Totales line
+  ctx.strokeStyle='#F5C842'; ctx.lineWidth=2.5;
+  ctx.beginPath(); started=false;
+  for (let i=0; i<=200; i++) {
+    const u=(maxUnits/200)*i; const it=PVU*u;
+    if(yp(it)<pad.top) break;
+    i===0 ? ctx.moveTo(xp(u),yp(it)) : ctx.lineTo(xp(u),yp(it));
+    started=true;
+  }
+  ctx.stroke();
+
+  // PE vertical line
+  ctx.strokeStyle='rgba(255,255,255,0.45)'; ctx.lineWidth=1.5; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(xPE,pad.top); ctx.lineTo(xPE,pad.top+cH); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // PE dot
+  const peY = yp(PVU*PE_u);
+  ctx.beginPath(); ctx.arc(xPE, peY, 8, 0, Math.PI*2);
+  ctx.fillStyle='#F5C842'; ctx.fill();
+  ctx.strokeStyle='#0F1B2D'; ctx.lineWidth=2.5; ctx.stroke();
+
+  // PE label — always inside chart
+  ctx.font='bold 12px Space Grotesk'; ctx.textAlign='left';
+  ctx.fillStyle='#F5C842';
+  const lx = (xPE + 100 < pad.left+cW) ? xPE+10 : xPE-110;
+  ctx.textAlign = (xPE + 100 < pad.left+cW) ? 'left' : 'right';
+  ctx.fillText('PE = '+Math.ceil(PE_u).toLocaleString()+' u.', lx, peY-12);
+  ctx.fillStyle='rgba(245,200,66,0.7)'; ctx.font='10px Inter';
+  ctx.fillText('$'+Math.round(PVU*PE_u).toLocaleString('es-CL'), lx, peY+22);
+
+  // Zone labels
+  ctx.font='bold 12px Space Grotesk'; ctx.textAlign='center';
+  if (xPE - pad.left > 60) {
+    ctx.fillStyle='rgba(231,76,60,0.55)';
+    ctx.fillText('PÉRDIDA', pad.left+(xPE-pad.left)/2, pad.top+cH-14);
+  }
+  if (pad.left+cW - xPE > 60) {
+    ctx.fillStyle='rgba(46,204,113,0.55)';
+    ctx.fillText('GANANCIA', xPE+(pad.left+cW-xPE)/2, pad.top+cH-14);
+  }
+}
+
+// ═══════════════════ ELASTICIDAD ═══════════════════
+function loadEjEla(p1, q1, eps, p2, cardId) {
+  document.querySelectorAll('#tab-ela .ej-card').forEach(c => c.classList.remove('loaded'));
+  document.getElementById(cardId).classList.add('loaded');
+  document.getElementById('sP1').value  = p1;
+  document.getElementById('sQ1').value  = q1;
+  document.getElementById('sEPS').value = eps;
+  document.getElementById('sP2').value  = p2;
+  updateEla();
+}
+
+function updateEla() {
+  const P1  = parseFloat(document.getElementById('sP1').value);
+  const Q1  = parseFloat(document.getElementById('sQ1').value);
+  const EPS = parseFloat(document.getElementById('sEPS').value);
+  const P2  = parseFloat(document.getElementById('sP2').value);
+
+  const dP_pct = (P2 - P1) / P1;
+  const dQ_pct = -EPS * dP_pct;
+  const Q2  = Math.round(Q1 * (1 + dQ_pct));
+  const IT1 = P1 * Q1;
+  const IT2 = P2 * Q2;
+  const dIT = IT2 - IT1;
+
+  document.getElementById('vP1').textContent = '$' + P1.toFixed(0);
+  document.getElementById('vQ1').textContent = Q1.toLocaleString('es-CL');
+  document.getElementById('vEPS').textContent = EPS.toFixed(1);
+  document.getElementById('vP2').textContent = '$' + P2.toFixed(0);
+
+  document.getElementById('kpiQ2').textContent  = Q2.toLocaleString('es-CL');
+  document.getElementById('kpiDQ').textContent  = (dQ_pct >= 0 ? '+' : '') + (dQ_pct*100).toFixed(1) + '%';
+  document.getElementById('kpiIT1').textContent = fmtCLP(IT1);
+
+  const it2El = document.getElementById('kpiIT2');
+  it2El.textContent = fmtCLP(IT2);
+  it2El.className   = dIT > 50 ? 'kpi-value positive' : dIT < -50 ? 'kpi-value negative' : 'kpi-value gold';
+
+  const badge   = document.getElementById('elaBadge');
+  const icon    = document.getElementById('elaIcon');
+  const tipo    = document.getElementById('elaTipo');
+  const explica = document.getElementById('elaExplica');
+
+  if (EPS > 1.05) {
+    if (dP_pct < 0) {
+      badge.className = 'verdict-box ganancia';
+      icon.textContent = '✅';
+      tipo.textContent = 'ELÁSTICA (|ε| > 1)';
+      explica.textContent = 'Bajar precio AUMENTA los ingresos. Estrategia recomendada.';
+    } else {
+      badge.className = 'verdict-box perdida';
+      icon.textContent = '❌';
+      tipo.textContent = 'ELÁSTICA (|ε| > 1)';
+      explica.textContent = 'Subir precio REDUCE los ingresos. No recomendado.';
+    }
+  } else if (EPS < 0.95) {
+    if (dP_pct > 0) {
+      badge.className = 'verdict-box ganancia';
+      icon.textContent = '✅';
+      tipo.textContent = 'INELÁSTICA (|ε| < 1)';
+      explica.textContent = 'Subir precio AUMENTA los ingresos. Estrategia recomendada.';
+    } else {
+      badge.className = 'verdict-box perdida';
+      icon.textContent = '⚠️';
+      tipo.textContent = 'INELÁSTICA (|ε| < 1)';
+      explica.textContent = 'Bajar precio REDUCE los ingresos. No recomendado.';
+    }
+  } else {
+    badge.className = 'verdict-box equilibrio';
+    icon.textContent = '⚖️';
+    tipo.textContent = 'ELASTICIDAD UNITARIA (|ε| ≈ 1)';
+    explica.textContent = 'El cambio en precio no afecta los ingresos totales.';
+  }
+
+  drawEla(P1, Q1, EPS, P2, Q2);
+}
+
+function fmtCLP(n) {
+  if (n >= 1000000) return '$' + (n/1000000).toFixed(2) + 'M';
+  if (n >= 1000)    return '$' + n.toLocaleString('es-CL');
+  return '$' + n.toFixed(0);
+}
+
+function drawEla(P1, Q1, EPS, P2, Q2) {
+  const canvas = document.getElementById('canvaEla');
+  const W = canvas.offsetWidth; const H = canvas.offsetHeight || 420;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+
+  const pad = {top:30, right:40, bottom:50, left:70};
+  const cW = W - pad.left - pad.right;
+  const cH = H - pad.top  - pad.bottom;
+
+  // Scale: Q axis 0 → maxQ, P axis 0 → maxP
+  // Make sure both Q1 and Q2 are comfortably visible
+  const qMax = Math.max(Q1, Q2) * 2.0;
+  const pMax = Math.max(P1, P2) * 2.2;
+  const qMin = 1; // avoid log(0)
+
+  function xp(q) { return pad.left + ((q - qMin) / (qMax - qMin)) * cW; }
+  function yp(p) { return pad.top  + cH - (p / pMax) * cH; }
+
+  // Grid
+  ctx.strokeStyle='rgba(255,255,255,0.04)'; ctx.lineWidth=1;
+  for (let i=0; i<=5; i++) {
+    const y=pad.top+(i/5)*cH; ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(pad.left+cW,y); ctx.stroke();
+    const x=pad.left+(i/5)*cW; ctx.beginPath(); ctx.moveTo(x,pad.top); ctx.lineTo(x,pad.top+cH); ctx.stroke();
+  }
+
+  // Axes
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.moveTo(pad.left,pad.top); ctx.lineTo(pad.left,pad.top+cH);
+  ctx.moveTo(pad.left,pad.top+cH); ctx.lineTo(pad.left+cW,pad.top+cH);
+  ctx.stroke();
+
+  // P labels (Y)
+  ctx.fillStyle='rgba(160,160,160,0.6)'; ctx.font='10px Inter'; ctx.textAlign='right';
+  for (let i=0; i<=5; i++) {
+    const p=(pMax/5)*i; const y=yp(p);
+    ctx.fillText('$'+p.toFixed(0), pad.left-5, y+3);
+  }
+  // Q labels (X)
+  ctx.textAlign='center';
+  for (let i=0; i<=5; i++) {
+    const q=qMin+(qMax-qMin)*(i/5); const x=xp(q);
+    ctx.fillText(q>=1000 ? (q/1000).toFixed(1)+'k' : q.toFixed(0), x, pad.top+cH+16);
+  }
+
+  // Axis titles
+  ctx.fillStyle='rgba(160,160,160,0.45)'; ctx.font='11px Inter'; ctx.textAlign='center';
+  ctx.fillText('Cantidad demandada (Q)', pad.left+cW/2, H-6);
+  ctx.save(); ctx.translate(12, pad.top+cH/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText('Precio ($)', 0, 0); ctx.restore();
+
+  // Demand curve: P = P1 * (Q1/Q)^(1/EPS)
+  ctx.strokeStyle='rgba(245,200,66,0.85)'; ctx.lineWidth=2.5;
+  ctx.beginPath();
+  let started=false;
+  const steps=300;
+  for (let i=1; i<=steps; i++) {
+    const q = qMin + (qMax-qMin)*(i/steps);
+    const p = P1 * Math.pow(Q1/q, 1/EPS);
+    if (isNaN(p) || p<0 || p>pMax*1.1) { started=false; continue; }
+    const x=xp(q); const y=yp(p);
+    if (!started) { ctx.moveTo(x,y); started=true; } else { ctx.lineTo(x,y); }
+  }
+  ctx.stroke();
+
+  // Dashed lines to points
+  const x1=xp(Q1), y1=yp(P1), x2=xp(Q2), y2=yp(P2);
+
+  ctx.setLineDash([4,4]); ctx.lineWidth=1;
+  ctx.strokeStyle='rgba(231,76,60,0.45)';
+  ctx.beginPath(); ctx.moveTo(pad.left,y1); ctx.lineTo(x1,y1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x1,pad.top+cH); ctx.lineTo(x1,y1); ctx.stroke();
+
+  ctx.strokeStyle='rgba(46,204,113,0.45)';
+  ctx.beginPath(); ctx.moveTo(pad.left,y2); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x2,pad.top+cH); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Point P1/Q1
+  ctx.beginPath(); ctx.arc(x1,y1,7,0,Math.PI*2);
+  ctx.fillStyle='#E74C3C'; ctx.fill();
+  ctx.strokeStyle='#0F1B2D'; ctx.lineWidth=2; ctx.stroke();
+
+  // Point P2/Q2
+  ctx.beginPath(); ctx.arc(x2,y2,7,0,Math.PI*2);
+  ctx.fillStyle='#2ECC71'; ctx.fill();
+  ctx.strokeStyle='#0F1B2D'; ctx.lineWidth=2; ctx.stroke();
+
+  // Labels for points — avoid overlap
+  ctx.font='bold 11px Space Grotesk';
+  const rightOf1 = (x1+90 < pad.left+cW);
+  ctx.textAlign = rightOf1 ? 'left' : 'right';
+  ctx.fillStyle='#E74C3C';
+  ctx.fillText('P1=$'+P1+' Q1='+Q1.toLocaleString(), rightOf1?x1+10:x1-10, y1-8);
+
+  const rightOf2 = (x2+90 < pad.left+cW);
+  ctx.textAlign = rightOf2 ? 'left' : 'right';
+  ctx.fillStyle='#2ECC71';
+  // avoid overlap with point 1
+  const yOff = Math.abs(y2-y1)<20 ? (y2>y1?16:-20) : -8;
+  ctx.fillText('P2=$'+P2+' Q2='+Q2.toLocaleString(), rightOf2?x2+10:x2-10, y2+yOff);
+
+  // IT comparison bars (mini, top-right)
+  const IT1=P1*Q1, IT2=P2*Q2;
+  const barW=Math.min(cW*0.38, 180), barH=14, barX=pad.left+cW-barW-6, barY=pad.top+8;
+  const maxIT=Math.max(IT1,IT2)*1.05;
+  ctx.fillStyle='rgba(0,0,0,0.35)';
+  ctx.fillRect(barX-2, barY-2, barW+4, barH*2+10);
+  ctx.fillStyle='rgba(231,76,60,0.6)';
+  ctx.fillRect(barX, barY, (IT1/maxIT)*barW, barH);
+  ctx.fillStyle='rgba(46,204,113,0.6)';
+  ctx.fillRect(barX, barY+barH+2, (IT2/maxIT)*barW, barH);
+  ctx.fillStyle='rgba(255,255,255,0.55)'; ctx.font='9px Inter'; ctx.textAlign='left';
+  ctx.fillText('IT1: '+fmtCLP(IT1), barX+2, barY+11);
+  ctx.fillText('IT2: '+fmtCLP(IT2), barX+2, barY+barH+13);
+}
+
+// ═══════════════════ INIT ═══════════════════
+window.addEventListener('load', () => { updatePE(); updateEla(); });
+window.addEventListener('resize', () => { updatePE(); updateEla(); });
+</script>
+</body>
+</html>
